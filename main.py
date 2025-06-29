@@ -59,10 +59,10 @@ def reformat_signal_message(original_message, is_result=False, win_type=None):
     # Split the original message into lines
     lines = original_message.split('\n')
 
-    # Extract the relevant lines
+    # Extract the relevant lines - updated to look for new format
     keep_lines = []
     for line in lines:
-        if any(prefix in line for prefix in ['💳', '🔥', '⌛', '🔽', '🔼']):
+        if any(prefix in line for prefix in ['🛰', '💷', '💎', '⌚️', '🔼', '🔽']):
             keep_lines.append(line)
 
     # Construct the new message
@@ -218,17 +218,24 @@ async def main():
             print("⚖️ Detected: DOJI - ignoring")
             return
 
-        # Process trading signals
-        formatted_message = reformat_signal_message(message_text)
-        
-        if formatted_message:
-            print(f"🔄 Reformatted message: {formatted_message}")
-            await send_to_telegram_channel(formatted_message)
-            sequence.append("call")
-            last_signal = formatted_message  # Store the last signal
-            print("📈 Detected: SIGNAL CALL")
+        # Process trading signals - updated to detect new format
+        # Check if message contains the new signal format
+        if ("🛰 POCKET OPTION" in message_text and 
+            any(indicator in message_text for indicator in ['🔼 call', '🔽 put']) and
+            any(currency in message_text for currency in ['💷', '💰', '💵', '💴', '💶'])):
+            
+            formatted_message = reformat_signal_message(message_text)
+            
+            if formatted_message:
+                print(f"🔄 Reformatted message: {formatted_message}")
+                await send_to_telegram_channel(formatted_message)
+                sequence.append("call")
+                last_signal = formatted_message  # Store the last signal
+                print("📈 Detected: SIGNAL CALL")
+            else:
+                print("⚠️ Not a valid signal format - ignoring")
         else:
-            print("⚠️ Not a valid signal format - ignoring")
+            print("⚠️ Message doesn't match new signal format - ignoring")
 
         # Sequence management
         if len(sequence) > 12:
