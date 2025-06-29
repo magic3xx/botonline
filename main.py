@@ -29,8 +29,9 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002383089858"))
 if string_session:
     # Remove any leading/trailing whitespace and common prefixes that might be added
     string_session = string_session.strip()
-    if string_session.startswith('='):
-        string_session = string_session[1:]  # Remove leading =
+    # Remove any leading = characters
+    while string_session.startswith('='):
+        string_session = string_session[1:]
     string_session = string_session.strip()  # Strip again after removing =
 
 # Debug the actual values (safely)
@@ -94,15 +95,42 @@ async def send_to_telegram_channel(message):
 
 
 def is_valid_session_string(session_str):
-    """Validate if the session string looks correct"""
-    if not session_str or len(session_str) < 100:
+    """Validate if the session string looks correct - more lenient validation"""
+    if not session_str:
         return False
     
-    # Session strings are typically base64-like and quite long
-    # They should not contain spaces or special characters except + / =
-    import string
-    allowed_chars = string.ascii_letters + string.digits + '+/='
-    return all(c in allowed_chars for c in session_str)
+    # Session strings should be at least 200 characters long
+    if len(session_str) < 200:
+        print(f"❌ Session string too short: {len(session_str)} characters")
+        return False
+    
+    # Should start with "1" (Telethon session format)
+    if not session_str.startswith('1'):
+        print(f"❌ Session string doesn't start with '1': starts with '{session_str[:5]}'")
+        return False
+    
+    print("✅ Session string format looks valid")
+    return True
+
+
+async def test_session_connection(client):
+    """Test if the session can connect and is authorized"""
+    try:
+        print("🔗 Testing session connection...")
+        await client.connect()
+        
+        if not await client.is_user_authorized():
+            print("❌ Session is not authorized")
+            return False
+            
+        # Try to get basic info to verify the session works
+        me = await client.get_me()
+        print(f"✅ Session is valid! Connected as: {me.first_name} (@{me.username})")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Session connection test failed: {str(e)}")
+        return False
 
 
 async def main():
@@ -113,33 +141,43 @@ async def main():
     client = None
     
     if string_session and is_valid_session_string(string_session):
-        print("🔐 Using string session...")
+        print("🔐 Attempting to use string session...")
         try:
             client = TelegramClient(StringSession(string_session), api_id, api_hash)
-            # Test the session by trying to connect
-            await client.connect()
-            if not await client.is_user_authorized():
-                print("❌ Session string is not authorized")
-                client = None
+            
+            # Test the session
+            if await test_session_connection(client):
+                print("✅ String session is working!")
             else:
-                print("✅ String session is valid and authorized!")
+                print("❌ String session failed authorization test")
+                await client.disconnect()
+                client = None
+                
         except Exception as e:
-            print(f"❌ Error with string session: {str(e)}")
+            print(f"❌ Error creating client with string session: {str(e)}")
+            if client:
+                try:
+                    await client.disconnect()
+                except:
+                    pass
             client = None
+    else:
+        print("❌ No valid session string provided")
     
-    # If string session failed, try to create a new session
+    # If string session failed, we can't proceed in Railway
     if client is None:
-        print("📁 Creating new session...")
-        print("⚠️ This will require manual authentication which won't work in Railway.")
-        print("💡 Please generate a valid session string locally and set it in Railway environment variables.")
-        
-        # For Railway deployment, we can't do interactive authentication
-        # The bot will exit here and you need to set a proper session string
-        print("❌ Cannot proceed without valid session string in Railway environment.")
-        print("🔧 Please:")
-        print("1. Run generate_session.py locally to get a valid session string")
-        print("2. Set the STRING_SESSION environment variable in Railway")
-        print("3. Redeploy the application")
+        print("📁 No valid session available...")
+        print("⚠️ Cannot create new session in Railway environment (no interactive input).")
+        print()
+        print("🔧 To fix this issue:")
+        print("1. Make sure you're using the COMPLETE session string from generate_session.py")
+        print("2. The session string should be around 350+ characters long")
+        print("3. It should start with '1BJWap1w...' or similar")
+        print("4. Make sure there are no extra spaces or characters when copying")
+        print("5. In Railway, go to Variables tab and update STRING_SESSION")
+        print("6. Redeploy the application")
+        print()
+        print("💡 Try running generate_session.py again to get a fresh session string")
         return
 
     @client.on(events.NewMessage(chats=channel_username))
@@ -206,12 +244,18 @@ async def main():
             sequence = []
 
     try:
-        await client.start()
+        print("🚀 Starting client...")
+        if not client.is_connected():
+            await client.start()
         print("✅ Bot started successfully!")
+        print("👂 Listening for messages...")
         await client.run_until_disconnected()
     except Exception as e:
-        print(f"❌ Error starting bot: {str(e)}")
+        print(f"❌ Error running bot: {str(e)}")
         raise
+    finally:
+        if client and client.is_connected():
+            await client.disconnect()
 
 
 if __name__ == "__main__":
