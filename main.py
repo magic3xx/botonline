@@ -6,6 +6,14 @@ import requests
 import time
 import re
 
+# Debug environment variables
+print("🔍 Debugging environment variables...")
+print(f"API_ID: {'SET' if os.getenv('API_ID') else 'NOT SET'}")
+print(f"API_HASH: {'SET' if os.getenv('API_HASH') else 'NOT SET'}")
+print(f"STRING_SESSION: {'SET' if os.getenv('STRING_SESSION') else 'NOT SET'}")
+print(f"BOT_TOKEN: {'SET' if os.getenv('BOT_TOKEN') else 'NOT SET'}")
+print(f"CHANNEL_ID: {'SET' if os.getenv('CHANNEL_ID') else 'NOT SET'}")
+
 # Configuration from environment variables
 api_id = int(os.getenv("API_ID", "27758818"))
 api_hash = os.getenv("API_HASH", "f618d737aeaa7578fa0fa30c8c5572de")
@@ -16,6 +24,10 @@ webhook_url = os.getenv("WEBHOOK_URL", "https://marisbriedis.app.n8n.cloud/webho
 # Telegram bot and channel details
 BOT_TOKEN = os.getenv("BOT_TOKEN", "7711621476:AAHPgGsxmviRFIRSHtZ8FlQdPdH7lbhrzuM")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002383089858"))
+
+# Debug the actual values (safely)
+print(f"🔍 STRING_SESSION length: {len(string_session) if string_session else 0}")
+print(f"🔍 STRING_SESSION starts with: {string_session[:10] if string_session else 'EMPTY'}...")
 
 # Global variables
 sequence = []
@@ -76,8 +88,18 @@ async def main():
     print("📡 Starting Telegram Bot...")
     print(f"📡 Listening for messages on {channel_username}...")
     
-    # Initialize client
-    client = TelegramClient(StringSession(string_session), api_id, api_hash)
+    # Initialize client - use session string if available, otherwise use file session
+    if string_session and string_session.strip() and len(string_session) > 50:
+        print("🔐 Using string session...")
+        try:
+            client = TelegramClient(StringSession(string_session), api_id, api_hash)
+        except Exception as e:
+            print(f"❌ Error with string session: {str(e)}")
+            print("📁 Falling back to file session...")
+            client = TelegramClient('bot', api_id, api_hash)
+    else:
+        print("📁 Using file session (bot.session)...")
+        client = TelegramClient('bot', api_id, api_hash)
 
     @client.on(events.NewMessage(chats=channel_username))
     async def handler(event):
