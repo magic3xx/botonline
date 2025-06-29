@@ -9,7 +9,7 @@ import re
 # Configuration from environment variables
 api_id = int(os.getenv("API_ID", "27758818"))
 api_hash = os.getenv("API_HASH", "f618d737aeaa7578fa0fa30c8c5572de")
-string_session = os.getenv("STRING_SESSION", "1BJWap1wBuxELxawBlhv3tqEtQio83ucviYi9zscfhUotrp_kkusqOWcb6M8zS3RA0zeCN4V16vGZhR9fYcv6S774LvMOeEGAPjH2p0q6xPRWL90yPXmF07Y2WiGrK1bd4qb4dDK_4VW9XxH9RNtLmNUlgv_GPfo2GKOY1w8uq1Z4eVgZ-HqmckTVWy5BmcoIeqehehPvnIC61lOAhLdrFyIb-yrUiTk4HbQcsipveve4cUQyJW-yvtIlnBNVHrZj6mNCGi8DnhA1SewPifJ-AmOakjtmos-zEuwTzOtrosGI2U-HznreYtj3jxaylHdYJI7KvY7fGx_iIhtU_XzvOInCoAgioCg=")
+string_session = os.getenv("STRING_SESSION", "")
 channel_username = os.getenv("CHANNEL_USERNAME", "@PocketSignalsM1")
 webhook_url = os.getenv("WEBHOOK_URL", "https://marisbriedis.app.n8n.cloud/webhook/fd2ddf25-4b6c-4d7b-9ee1-0d927fda2a41")
 
