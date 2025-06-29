@@ -17,7 +17,7 @@ print(f"CHANNEL_ID: {'SET' if os.getenv('CHANNEL_ID') else 'NOT SET'}")
 # Configuration from environment variables
 api_id = int(os.getenv("API_ID", "27758818"))
 api_hash = os.getenv("API_HASH", "f618d737aeaa7578fa0fa30c8c5572de")
-string_session = os.getenv("STRING_SESSION", "")
+string_session = os.getenv("STRING_SESSION", "").strip()  # Strip whitespace
 channel_username = os.getenv("CHANNEL_USERNAME", "@PocketSignalsM1")
 webhook_url = os.getenv("WEBHOOK_URL", "https://marisbriedis.app.n8n.cloud/webhook/fd2ddf25-4b6c-4d7b-9ee1-0d927fda2a41")
 
@@ -25,9 +25,18 @@ webhook_url = os.getenv("WEBHOOK_URL", "https://marisbriedis.app.n8n.cloud/webho
 BOT_TOKEN = os.getenv("BOT_TOKEN", "7711621476:AAHPgGsxmviRFIRSHtZ8FlQdPdH7lbhrzuM")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002383089858"))
 
+# Clean and validate session string
+if string_session:
+    # Remove any leading/trailing whitespace and common prefixes that might be added
+    string_session = string_session.strip()
+    if string_session.startswith('='):
+        string_session = string_session[1:]  # Remove leading =
+    string_session = string_session.strip()  # Strip again after removing =
+
 # Debug the actual values (safely)
 print(f"🔍 STRING_SESSION length: {len(string_session) if string_session else 0}")
 print(f"🔍 STRING_SESSION starts with: {string_session[:10] if string_session else 'EMPTY'}...")
+print(f"🔍 STRING_SESSION ends with: ...{string_session[-10:] if string_session and len(string_session) > 10 else 'EMPTY'}")
 
 # Global variables
 sequence = []
@@ -84,22 +93,54 @@ async def send_to_telegram_channel(message):
         return None
 
 
+def is_valid_session_string(session_str):
+    """Validate if the session string looks correct"""
+    if not session_str or len(session_str) < 100:
+        return False
+    
+    # Session strings are typically base64-like and quite long
+    # They should not contain spaces or special characters except + / =
+    import string
+    allowed_chars = string.ascii_letters + string.digits + '+/='
+    return all(c in allowed_chars for c in session_str)
+
+
 async def main():
     print("📡 Starting Telegram Bot...")
     print(f"📡 Listening for messages on {channel_username}...")
     
-    # Initialize client - use session string if available, otherwise use file session
-    if string_session and string_session.strip() and len(string_session) > 50:
+    # Initialize client - use session string if available and valid
+    client = None
+    
+    if string_session and is_valid_session_string(string_session):
         print("🔐 Using string session...")
         try:
             client = TelegramClient(StringSession(string_session), api_id, api_hash)
+            # Test the session by trying to connect
+            await client.connect()
+            if not await client.is_user_authorized():
+                print("❌ Session string is not authorized")
+                client = None
+            else:
+                print("✅ String session is valid and authorized!")
         except Exception as e:
             print(f"❌ Error with string session: {str(e)}")
-            print("📁 Falling back to file session...")
-            client = TelegramClient('bot', api_id, api_hash)
-    else:
-        print("📁 Using file session (bot.session)...")
-        client = TelegramClient('bot', api_id, api_hash)
+            client = None
+    
+    # If string session failed, try to create a new session
+    if client is None:
+        print("📁 Creating new session...")
+        print("⚠️ This will require manual authentication which won't work in Railway.")
+        print("💡 Please generate a valid session string locally and set it in Railway environment variables.")
+        
+        # For Railway deployment, we can't do interactive authentication
+        # The bot will exit here and you need to set a proper session string
+        print("❌ Cannot proceed without valid session string in Railway environment.")
+        print("🔧 Please:")
+        print("1. Run generate_session.py locally to get a valid session string")
+        print("2. Set the STRING_SESSION environment variable in Railway")
+        print("3. Redeploy the application")
+        return
 
     @client.on(events.NewMessage(chats=channel_username))
     async def handler(event):
