@@ -18,7 +18,7 @@ print(f"CHANNEL_ID: {'SET' if os.getenv('CHANNEL_ID') else 'NOT SET'}")
 api_id = int(os.getenv("API_ID", "27758818"))
 api_hash = os.getenv("API_HASH", "f618d737aeaa7578fa0fa30c8c5572de")
 string_session = os.getenv("STRING_SESSION", "").strip()  # Strip whitespace
-channel_username = os.getenv("CHANNEL_USERNAME", "@PocketSignalsM1")
+channel_username = os.getenv("CHANNEL_USERNAME", "@POCKETSIGNALS_BOT")
 webhook_url = os.getenv("WEBHOOK_URL", "https://marisbriedis.app.n8n.cloud/webhook/fd2ddf25-4b6c-4d7b-9ee1-0d927fda2a41")
 
 # Telegram bot and channel details
